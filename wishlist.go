@@ -24,7 +24,7 @@ func main() {
 
 	// Only log the warning severity or above.
 	log.SetLevel(log.TraceLevel)
-	driver := agouti.ChromeDriver(agouti.ChromeOptions("args", []string{"--headless", "window-size=1440x900", "--disable-gpu", "--no-sandbox"}),)
+	driver := agouti.ChromeDriver(agouti.ChromeOptions("args", []string{"--headless", "window-size=1440x900", "--disable-gpu", "--no-sandbox"}))
 	if err := driver.Start(); err != nil {
 		log.Fatal("Failed to start driver:", err)
 	}
@@ -38,8 +38,15 @@ func main() {
 	}
 	for count := 0; count < 5; count++ {
 		var value string
-		page.RunScript(`window.scrollBy(0,1400);`, nil, &value)
-		page.RunScript(`window.scrollBy(0,1400);`, nil, &value)
+		var err error
+		err = page.RunScript(`window.scrollBy(0,1400);`, nil, &value)
+		if err != nil {
+			log.Error(err)
+		}
+		err = page.RunScript(`window.scrollBy(0,1400);`, nil, &value)
+		if err != nil {
+			log.Error(err)
+		}
 		time.Sleep(time.Second * 3)
 		eolM := page.FindByID(`endOfListMarker`)
 		ec, _ := eolM.Count()
@@ -48,22 +55,44 @@ func main() {
 		}
 	}
 	books := page.AllByClass(`g-item-sortable`)
+	bookChan := make(chan *agouti.Selection)
+	finishedChan := make(chan bool)
 	cnt, _ := books.Count()
-	for i:=0; i < cnt; i++ {
-		bkId, _ := books.At(i).Attribute(`data-itemid`)
-		bkTitle, _ := books.At(i).Find(fmt.Sprintf("a[id=itemName_%s]",bkId)).Text()
-		bkAuthor, _ := books.At(i).Find(fmt.Sprintf("span[id=item-byline-%s]", bkId)).Text()
-		prDrop, err := books.At(i).FindByClass("itemPriceDrop").Text()
+	go PrintBook(bookChan, finishedChan)
+	for i := 0; i < cnt; i++ {
+		bookChan <- books.At(i)
+	}
+	close(bookChan)
+	<-finishedChan
+	close(finishedChan)
+
+	if err := driver.Stop(); err != nil {
+		log.Fatal("Failed to close pages and stop WebDriver:", err)
+	}
+
+}
+
+func PrintBook(bookChan chan *agouti.Selection, finishedChan chan bool) {
+	for {
+		book, more := <-bookChan
+		if !more {
+			finishedChan <- true
+			break
+		}
+		bkId, _ := book.Attribute(`data-itemid`)
+		bkTitle, _ := book.Find(fmt.Sprintf("a[id=itemName_%s]", bkId)).Text()
+		bkAuthor, _ := book.Find(fmt.Sprintf("span[id=item-byline-%s]", bkId)).Text()
+		prDrop, err := book.FindByClass("itemPriceDrop").Text()
 		if err != nil {
 			prDrop = ""
 		}
-		sPrice, _ := books.At(i).Attribute(`data-price`)
+		sPrice, _ := book.Attribute(`data-price`)
 		price, _ := strconv.ParseFloat(sPrice, 64)
-		if (prDrop != "") {
+		if prDrop != "" {
 			regex := regexp.MustCompile("Price dropped (?P<drop_percent>[0-9]+)%")
 			match := regex.FindStringSubmatch(prDrop)
 			var drpPct = 0
-			if (len(match) == 2) {
+			if len(match) == 2 {
 				drpPct, _ = strconv.Atoi(match[1])
 			}
 			bkStr := fmt.Sprintf("%s %s $%.02f - %s", bkTitle, bkAuthor, price, prDrop)
@@ -78,17 +107,10 @@ func main() {
 			} else {
 				log.Debug(aurora.BrightGreen(aurora.Bold(bkStr)))
 			}
-		} else if (price < 5) {
+		} else if price < 5 {
 			log.Error(aurora.BgBrightRed(aurora.Bold(aurora.White(fmt.Sprintf("%s %s $%.02f", bkTitle, bkAuthor, price)))))
 		} else {
 			log.Trace(fmt.Sprintf("%s %s $%.02f", bkTitle, bkAuthor, price))
 		}
 	}
-	/*amzn_html, _ := page.HTML()
-	r := strings.NewReader(amzn_html)
-	parser := html.NewTokenizer(r)*/
-	if err := driver.Stop(); err != nil {
-		log.Fatal("Failed to close pages and stop WebDriver:", err)
-	}
-
 }
