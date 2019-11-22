@@ -2,7 +2,7 @@ package main
 
 import (
 	"fmt"
-	"github.com/logrusorgru/aurora"
+	"github.com/gookit/color"
 	"github.com/sclevine/agouti"
 	log "github.com/sirupsen/logrus"
 	"os"
@@ -73,6 +73,8 @@ func main() {
 }
 
 func PrintBook(bookChan chan *agouti.Selection, finishedChan chan bool) {
+	orange := color.RGB(255, 165, 0)
+	lightgray := color.RGB(211, 211, 211)
 	for {
 		book, more := <-bookChan
 		if !more {
@@ -97,20 +99,20 @@ func PrintBook(bookChan chan *agouti.Selection, finishedChan chan bool) {
 			}
 			bkStr := fmt.Sprintf("%s %s $%.02f - %s", bkTitle, bkAuthor, price, prDrop)
 			if drpPct >= 70 || price < 5 {
-				log.Error(aurora.BgBrightRed(aurora.Bold(aurora.White(bkStr))))
+				log.Error(color.Style{color.FgWhite, color.BgRed, color.Bold}.Sprint(bkStr))
 			} else if drpPct >= 50 {
-				log.Error(aurora.BrightRed(aurora.Bold(bkStr)))
+				log.Error(color.Style{color.FgRed, color.Bold}.Sprint(bkStr))
 			} else if drpPct >= 25 {
-				log.Warn(aurora.Bold(aurora.BrightBlue(bkStr)))
+				log.Warn(color.Bold.Sprint(orange.Sprint(bkStr)))
 			} else if drpPct >= 10 {
-				log.Info(aurora.Bold(aurora.BrightYellow(bkStr)))
+				log.Info(color.Style{color.FgYellow, color.Bold}.Sprint(bkStr))
 			} else {
-				log.Debug(aurora.BrightGreen(aurora.Bold(bkStr)))
+				log.Debug(color.Style{color.FgLightGreen}.Sprint(bkStr))
 			}
 		} else if price < 5 {
-			log.Error(aurora.BgBrightRed(aurora.Bold(aurora.White(fmt.Sprintf("%s %s $%.02f", bkTitle, bkAuthor, price)))))
+			log.Error(color.Style{color.FgWhite, color.BgRed, color.Bold}.Sprintf("%s %s $%.02f", bkTitle, bkAuthor, price))
 		} else {
-			log.Trace(fmt.Sprintf("%s %s $%.02f", bkTitle, bkAuthor, price))
+			log.Trace(lightgray.Sprintf("%s %s $%.02f", bkTitle, bkAuthor, price))
 		}
 	}
 }
