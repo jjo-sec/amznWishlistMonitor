@@ -8,14 +8,11 @@ import (
 	"os"
 	"regexp"
 	"strconv"
+	"strings"
 	"time"
 )
 
 func main() {
-	//log.SetFormatter(&log.JSONFormatter{})
-
-	// Output to stdout instead of the default stderr
-	// Can be any io.Writer, see below for File example
 	log.SetOutput(os.Stdout)
 
 	log.SetFormatter(&log.TextFormatter{
@@ -73,8 +70,13 @@ func main() {
 }
 
 func PrintBook(bookChan chan *agouti.Selection, finishedChan chan bool) {
-	orange := color.RGB(255, 165, 0)
-	lightgray := color.RGB(211, 211, 211)
+	error_ := color.RGB(255, 0, 0)
+	warn := color.RGB(255, 95, 0)
+	info := color.RGB(135, 255, 0)
+	spam := color.RGB(0, 95, 0)
+	notice := color.RGB(255, 215, 0)
+	critical := color.Style{color.FgWhite, color.BgRed, color.Bold}
+
 	for {
 		book, more := <-bookChan
 		if !more {
@@ -99,20 +101,27 @@ func PrintBook(bookChan chan *agouti.Selection, finishedChan chan bool) {
 			}
 			bkStr := fmt.Sprintf("%s %s $%.02f - %s", bkTitle, bkAuthor, price, prDrop)
 			if drpPct >= 70 || price < 5 {
-				log.Error(color.Style{color.FgWhite, color.BgRed, color.Bold}.Sprint(bkStr))
+				PrintBookInfo("CRITICAL", critical.Sprint(bkStr))
 			} else if drpPct >= 50 {
-				log.Error(color.Style{color.FgRed, color.Bold}.Sprint(bkStr))
+				PrintBookInfo("ERROR", color.Bold.Sprint(error_.Sprint(bkStr)))
 			} else if drpPct >= 25 {
-				log.Warn(color.Bold.Sprint(orange.Sprint(bkStr)))
+				PrintBookInfo("WARNING", color.Bold.Sprint(warn.Sprint(bkStr)))
 			} else if drpPct >= 10 {
-				log.Info(color.Style{color.FgYellow, color.Bold}.Sprint(bkStr))
+				PrintBookInfo("NOTICE", color.Bold.Sprint(notice.Sprint(bkStr)))
 			} else {
-				log.Debug(color.Style{color.FgLightGreen}.Sprint(bkStr))
+				PrintBookInfo("INFO", color.Bold.Sprint(info.Sprint(bkStr)))
 			}
 		} else if price < 5 {
-			log.Error(color.Style{color.FgWhite, color.BgRed, color.Bold}.Sprintf("%s %s $%.02f", bkTitle, bkAuthor, price))
+			PrintBookInfo("CRITICAL", critical.Sprintf("%s %s $%.02f", bkTitle, bkAuthor, price))
 		} else {
-			log.Trace(lightgray.Sprintf("%s %s $%.02f", bkTitle, bkAuthor, price))
+			PrintBookInfo("SPAM", spam.Sprintf("%s %s $%.02f", bkTitle, bkAuthor, price))
 		}
 	}
+}
+
+func PrintBookInfo(level string, message string) {
+	tmStr := color.Bold.Sprint(color.RGB(0, 135, 0).Sprintf("[%s] ", time.Now().Format(time.RFC3339)))
+	levelFmt := color.Style{color.FgDarkGray, color.OpBold}
+
+	fmt.Println(tmStr, levelFmt.Sprintf("[%s] ", strings.ToUpper(level)), message)
 }
