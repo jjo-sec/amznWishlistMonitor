@@ -125,8 +125,8 @@ func PrintBook(bookChan chan *agouti.Selection, finishedChan chan bool) {
 }
 
 func PrintBookInfo(level string, message string) {
-	tmStr := color.Bold.Sprint(color.RGB(0, 135, 0).Sprintf("[%s] ", time.Now().Format(time.RFC3339)))
+	tmStr := color.RGB(0, 155, 0).Sprintf("[%s]", time.Now().Format("2006-01-02 15:04:05"))
 	levelFmt := color.Style{color.FgDarkGray, color.OpBold}
 
-	fmt.Println(tmStr, levelFmt.Sprintf("[%s] ", strings.ToUpper(level)), message)
+	fmt.Println(tmStr, levelFmt.Sprintf("[%s]", strings.ToUpper(level)), message)
 }
