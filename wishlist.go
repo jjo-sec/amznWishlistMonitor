@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"github.com/gookit/color"
 	"github.com/sclevine/agouti"
@@ -18,9 +19,13 @@ func main() {
 	log.SetFormatter(&log.TextFormatter{
 		FullTimestamp: true,
 	})
-
-	// Only log the warning severity or above.
-	log.SetLevel(log.TraceLevel)
+	log.SetLevel(log.WarnLevel)
+	var wishlistId string
+	flag.StringVar(&wishlistId, "w", "", "Wishlist ID to check")
+	flag.Parse()
+	if wishlistId == "" {
+		log.Fatal("Wishlist ID must be set via -w")
+	}
 	driver := agouti.ChromeDriver(agouti.ChromeOptions("args", []string{"--headless", "window-size=1440x900", "--disable-gpu", "--no-sandbox"}))
 	if err := driver.Start(); err != nil {
 		log.Fatal("Failed to start driver:", err)
@@ -30,7 +35,7 @@ func main() {
 	if err != nil {
 		log.Fatal("Failed to open page:", err)
 	}
-	if err := page.Navigate("https://www.amazon.com/gp/registry/wishlist/1NI6JGK58RCSE/ref=nav_wishlist_lists_1"); err != nil {
+	if err := page.Navigate(fmt.Sprintf("https://www.amazon.com/gp/registry/wishlist/%s/ref=nav_wishlist_lists_1", wishlistId)); err != nil {
 		log.Fatal("Failed to navigate:", err)
 	}
 	for count := 0; count < 5; count++ {
